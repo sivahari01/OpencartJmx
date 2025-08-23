@@ -1,33 +1,28 @@
-name: Download Neotys Maven Repo
+name: Mirror Neotys Maven Releases
 
 on:
-  workflow_dispatch:   # Run manually from GitHub Actions tab
-  push:                # Optional - run on push
-    branches: [ main ]
+  workflow_dispatch:   # Trigger manually
 
 jobs:
-  download:
+  mirror:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v4
+      - name: Install Tools
+        run: sudo apt-get update && sudo apt-get install -y wget zip
 
-    - name: Install wget & zip
-      run: sudo apt-get update && sudo apt-get install -y wget zip
+      - name: Download Entire Releases Repo
+        run: |
+          mkdir -p neotys-releases
+          cd neotys-releases
+          wget -r -np -nH --cut-dirs=4 --reject "index.html*" \
+            https://maven.neotys.com/content/repositories/releases/
 
-    - name: Download Neotys Maven Releases
-      run: |
-        mkdir -p neotys-releases
-        cd neotys-releases
-        wget -r -nH --cut-dirs=4 --no-parent --reject "index.html*" https://maven.neotys.com/content/repositories/releases/
+      - name: Create Split Zip (2GB parts)
+        run: |
+          zip -r -s 2000m neotys-releases.zip neotys-releases
 
-    - name: Zip Downloaded Repo
-      run: |
-        zip -r neotys-releases.zip neotys-releases
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: neotys-maven-releases
-        path: neotys-releases.zip
+      - name: Upload Split Zips
+        uses: actions/upload-artifact@v4
+        with:
+          name: neotys-maven-releases
+          path: neotys-releases.zip*
